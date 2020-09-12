@@ -1,0 +1,85 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Mappings:
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: ami-0c94855ba95c71c99
+    us-east-2:
+      HVM64: ami-0603cbe34fd08cb81
+Parameters:
+  SecurityGroupDescription:
+    Description: Security Group Description
+    Type: String
+  SSHKey:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+
+Resources:
+  MyInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
+      InstanceType: t2.micro
+      KeyName: !Ref SSHKey
+      SecurityGroups:
+        - !Ref SSHSecurityGroup
+      # we install our web server with user data
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -xe
+            # Get the latest CloudFormation package
+            yum update -y aws-cfn-bootstrap
+            # Start cfn-init
+            /opt/aws/bin/cfn-init -s ${AWS::StackId} -r MyInstance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
+    Metadata:
+      Comment: Install a simple Apache HTTP page
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+          files:
+            "/var/www/html/index.html":
+              content: |
+                <h1>Hello and Welcome from Apache HTTP server hosted on EC2 instance!</h1>
+                <p>This was created using cfn-init</p>
+              mode: '000644'
+          commands:
+            hello:
+              command: "echo 'hello world'"
+          services:
+            sysvinit:
+              httpd:
+                enabled: 'true'
+                ensureRunning: 'true'
+      Tags:
+        -
+          Key: Name
+          Value: MyFirstInstance
+
+  # an elastic IP for our instance
+  MyEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref MyInstance
+
+  # our EC2 security group
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH and HTTP access via port 22 and 80
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+      - CidrIp: 0.0.0.0/0
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
+Outputs:
+  PublicIP:
+    Description: Public IP address of the server
+    Value:
+      !GetAtt MyInstance.PublicIp

@@ -1,0 +1,46 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Mappings:
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: ami-0c94855ba95c71c99
+    us-east-2:
+      HVM64: ami-0603cbe34fd08cb81
+Parameters:
+  SecurityGroupDescription:
+    Description: Security Group Description
+    Type: String
+
+Resources:
+  MyInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref SSHSecurityGroup
+      Tags:
+        -
+          Key: Name
+          Value: MyFirstInstance
+
+  # an elastic IP for our instance
+  MyEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref MyInstance
+
+  # our EC2 security group
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH and HTTP access via port 22 and 80
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+      - CidrIp: 0.0.0.0/0
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
