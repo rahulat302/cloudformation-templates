@@ -20,7 +20,12 @@ Resources:
     Properties:
       ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
       InstanceType: t2.micro
+      IamInstanceProfile: !Ref InstanceProfileForEC2
       KeyName: !Ref SSHKey
+      Tags:
+        -
+          Key: Name
+          Value: MyFirstInstance      
       SecurityGroups:
         - !Ref SSHSecurityGroup
       # we install our web server with user data
@@ -53,12 +58,6 @@ Resources:
               httpd:
                 enabled: 'true'
                 ensureRunning: 'true'
-      Tags:
-        -
-          Key: Name
-          Value: MyFirstInstance
-    DependsOn: MyDB
-
 
   # an elastic IP for our instance
   MyEIP:
@@ -81,15 +80,35 @@ Resources:
         IpProtocol: tcp
         ToPort: 80
 
-  MyDB:
-    Type: AWS::RDS::DBInstance
+  IAMRoleWithS3Access:
+    Type: AWS::IAM::Role
     Properties:
-      AllocatedStorage: '5'
-      DBInstanceClass: db.t2.micro
-      Engine: MySQL
-      EngineVersion: "5.7.22"
-      MasterUsername: MyName
-      MasterUserPassword: MyPassword
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: ec2s3accesspolicy
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action: s3:GetObject
+            Resource: "*"
+
+  InstanceProfileForEC2:
+    Type: AWS::IAM::InstanceProfile
+    DependsOn: IAMRoleWithS3Access
+    Properties:
+      Path: '/'
+      Roles:
+      - !Ref IAMRoleWithS3Access
 
 Outputs:
   PublicIP:

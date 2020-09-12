@@ -13,6 +13,9 @@ Parameters:
   SSHKey:
     Type: AWS::EC2::KeyPair::KeyName
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+  CidrHTTP:
+    Type: String
+    Default: "0.0.0.0/0"
 
 Resources:
   MyInstance:
@@ -28,6 +31,7 @@ Resources:
           Value: MyFirstInstance
       SecurityGroups:
         - !Ref SSHSecurityGroup
+        - !Ref CriticalSecurityGroup
       # we install our web server with user data
       UserData:
         Fn::Base64:
@@ -130,6 +134,18 @@ Resources:
         Timeout: PT5M
         Count: 1
     Type: AWS::CloudFormation::WaitCondition
+
+  # our EC2 security group
+  CriticalSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DeletionPolicy: Retain
+    Properties:
+      GroupDescription: Enable HTTP access via port 80
+      SecurityGroupIngress:
+      - CidrIp: !Ref CidrHTTP
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
 
 Outputs:
   PublicIP:
