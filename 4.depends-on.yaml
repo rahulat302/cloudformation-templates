@@ -25,7 +25,7 @@ Resources:
       Tags:
         -
           Key: Name
-          Value: MyFirstInstance      
+          Value: MyFirstInstance
       SecurityGroups:
         - !Ref SSHSecurityGroup
       # we install our web server with user data
@@ -69,7 +69,7 @@ Resources:
   SSHSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable SSH and HTTP access via port 22 and 80
+      GroupDescription: !Ref SecurityGroupDescription
       SecurityGroupIngress:
       - CidrIp: 0.0.0.0/0
         FromPort: 22
